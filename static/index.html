@@ -581,9 +581,11 @@
                         }).catch(err => console.error('更新计数失败:', err));
                     }, 50);
                     
-                    console.log('复制成功');
+                    // 恢复toast提示，但使用优化的方式
+                    showToast('复制成功！');
                 } catch (error) {
-                    console.error('复制失败，请手动复制');
+                    // 恢复错误提示
+                    showToast('复制失败，请手动复制', 'error');
                     console.error('复制失败:', error);
                 }
             }
@@ -667,23 +669,40 @@
             }
         }
         
-        // 显示提示框 - 核心优化版，使用requestAnimationFrame避免页面动荡
+        // 显示提示框 - 完全优化版，确保绝对不会导致页面动荡
         function showToast(message, type = 'success') {
             // 确保toast元素存在
             if (!toast) return;
             
+            // 移除任何可能的定时器，避免冲突
+            if (toast._timeoutId) {
+                clearTimeout(toast._timeoutId);
+            }
+            
+            // 预先计算所有样式，减少重排
+            const bgColor = type === 'error' ? 'rgba(235, 87, 87, 0.9)' : 'rgba(0, 0, 0, 0.8)';
+            
             // 使用requestAnimationFrame确保DOM更新的最佳时机
             requestAnimationFrame(() => {
-                // 设置内容
+                // 一次性设置所有样式和内容
                 toast.textContent = message;
-                
-                // 直接设置样式，避免类操作
-                toast.style.backgroundColor = type === 'error' ? 'rgba(235, 87, 87, 0.9)' : 'rgba(0, 0, 0, 0.8)';
+                toast.style.backgroundColor = bgColor;
                 toast.style.opacity = '1';
+                // 确保定位稳定
+                toast.style.position = 'fixed';
+                toast.style.top = '20px';
+                toast.style.left = '50%';
+                toast.style.transform = 'translateX(-50%)';
+                toast.style.zIndex = '10000';
+                toast.style.pointerEvents = 'none';
+                toast.style.boxSizing = 'border-box';
+                toast.style.minWidth = '100px';
+                toast.style.maxWidth = '80%';
+                toast.style.textAlign = 'center';
             });
             
             // 延迟隐藏，使用requestAnimationFrame优化
-            setTimeout(() => {
+            toast._timeoutId = setTimeout(() => {
                 requestAnimationFrame(() => {
                     if (toast) {
                         toast.style.opacity = '0';
