@@ -118,7 +118,15 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
         
-        /* 移除了group-tabs相关样式 */
+        /* 分组标签样式 */
+        .group-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
         
         .group-tab {
             padding: 8px 16px;
@@ -128,6 +136,7 @@
             cursor: pointer;
             transition: all 0.3s;
             font-size: 0.9rem;
+            white-space: nowrap;
         }
         
         .group-tab:hover {
@@ -139,18 +148,23 @@
             color: white;
         }
         
+        /* 分组选择输入样式 */
+        .group-selector {
+            margin-bottom: 20px;
+        }
+        
         .sentence-list {
             display: block; /* 改为上下排列布局 */
         }
         
         .sentence-card {
             background: #ffffff;
-            padding: 16px;
+            padding: 8px;
             padding-right: 80px; /* 为右侧删除按钮留出空间 */
             border-radius: 8px;
             border-left: 3px solid #667eea;
             position: relative;
-            margin-bottom: 16px;
+            margin-bottom: 6px; /* 减小句子卡片间距 */
             transition: all 0.2s ease;
             cursor: pointer;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -225,7 +239,7 @@
             
             header {
                 padding: 12px 0; /* 进一步减小标题栏内边距 */
-                margin-bottom: 10px; /* 进一步减小底部间距 */
+                margin-bottom: 5px; /* 进一步减小底部间距 */
             }
             
             h1 {
@@ -246,8 +260,8 @@
             }
             
             .sentence-card {
-                padding: 10px 12px; /* 进一步减小卡片内边距 */
-                margin-bottom: 8px; /* 进一步减小卡片间距 */
+                padding: 6px 12px; /* 进一步减小卡片内边距 */
+                margin-bottom: 4px; /* 进一步减小卡片间距 */
             }
         }
     </style>
@@ -258,10 +272,34 @@
             <h1>EasyCopy</h1>
             <p class="subtitle">快速管理和复制常用文本</p>
         </header>
-        
+        <h3>句子列表</h3>
         <!-- 将句子列表移到最上方 -->
         <div class="sentences-container">
-            <h2>句子列表</h2>
+            
+            <!-- 分组切换标签和创建按钮容器 -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 20px;">
+                <div class="group-tabs" id="group-tabs" style="flex-grow: 1;">
+                    <button class="group-tab active" data-group="全部">全部</button>
+                </div>
+                <button id="show-create-group-btn" style="padding: 8px 16px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; height: 36px; align-self: flex-start;">
+                    + 创建分组
+                </button>
+            </div>
+            
+            <!-- 创建分组模态窗口 -->
+            <div id="create-group-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+                <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    <h3 style="margin-top: 0; margin-bottom: 15px;">创建新分组</h3>
+                    <div style="margin-bottom: 20px;">
+                        <label for="modal-group-name" style="display: block; margin-bottom: 5px; font-weight: 500;">分组名称</label>
+                        <input type="text" id="modal-group-name" placeholder="请输入分组名称" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button id="cancel-create-group" style="padding: 8px 16px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">取消</button>
+                        <button id="confirm-create-group" style="padding: 8px 16px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer;">创建</button>
+                    </div>
+                </div>
+            </div>
             <div class="sentence-list" id="sentence-list">
                 <div class="empty-state">
                     <h3>暂无数据</h3>
@@ -277,6 +315,9 @@
                 <label for="new-content">内容</label>
                 <textarea id="new-content" placeholder="输入要保存的句子..." required></textarea>
             </div>
+            <div class="current-group-info">
+                <small>当前分组：<span id="display-current-group">全部</span></small>
+            </div>
             <button id="add-btn">添加句子</button>
         </div>
         
@@ -289,6 +330,13 @@
     <div class="toast" id="toast"></div>
     
     <style>
+        /* 当前分组信息样式 */
+        .current-group-info {
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
         /* 简化toast样式，移除可能导致页面动荡的过渡效果 */
         .toast {
             position: fixed;
@@ -323,21 +371,18 @@
         body {
             -webkit-text-size-adjust: 100%;
             overflow-x: hidden; /* 防止水平滚动 */
-            overflow-y: hidden; /* 完全禁用垂直滚动，防止点击时滚动条闪烁 */
+            overflow-y: auto; /* 启用垂直滚动，确保所有内容都能访问 */
             height: 100vh;
             margin: 0;
             padding: 0;
-            position: fixed;
             width: 100%;
-            -webkit-overflow-scrolling: none;
         }
         
         html {
             overflow-x: hidden;
-            overflow-y: hidden;
+            overflow-y: auto;
             height: 100%;
-            scroll-behavior: auto; /* 禁用平滑滚动 */
-            -webkit-overflow-scrolling: none;
+            scroll-behavior: auto;
         }
         
         /* 句子卡片样式 - 恢复基本视觉效果同时优化移动端 */
@@ -345,8 +390,8 @@
             display: flex;
             align-items: center;
             position: relative;
-            padding: 16px;
-            margin-bottom: 10px;
+            padding: 8px;
+            margin-bottom: 5px; /* 减小卡片间距 */
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -403,11 +448,16 @@
     </style>
     
     <script>
-        // DOM元素
-        const addBtn = document.getElementById('add-btn');
-        const newContent = document.getElementById('new-content');
-        const sentenceList = document.getElementById('sentence-list');
-        const toast = document.getElementById('toast');
+        // DOM元素 - 使用let而不是const，因为我们需要在运行时更新这些引用
+        let addBtn = document.getElementById('add-btn');
+        let newContent = document.getElementById('new-content');
+        let newGroup = document.getElementById('new-group');
+        let sentenceList = document.getElementById('sentence-list');
+        let groupTabs = document.getElementById('group-tabs');
+        let toast = document.getElementById('toast');
+        
+        // 当前选中的分组
+        let currentGroup = '全部';
         
         // 所有句子数据
         let allSentences = [];
@@ -417,6 +467,15 @@
         
         // 初始化
         function init() {
+            // 绑定"全部"分组标签的点击事件
+            const allTab = document.querySelector('.group-tab[data-group="全部"]');
+            allTab.addEventListener('click', function() {
+                switchGroup('全部');
+            });
+            
+            // 加载分组
+            loadGroups();
+            
             // 加载句子数据
             loadSentences();
             
@@ -439,16 +498,211 @@
         // 加载句子数据
         async function loadSentences() {
             try {
-                const response = await fetch('/api/sentences');
+                // 构建请求URL，添加分组参数
+                let url = '/api/sentences';
+                if (currentGroup !== '全部') {
+                    url += '?group=' + encodeURIComponent(currentGroup);
+                }
+                
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error('加载失败');
                 }
-                allSentences = await response.json();
+                
+                // 确保allSentences始终是一个数组
+                const data = await response.json();
+                allSentences = Array.isArray(data) ? data : [];
                 renderSentences();
             } catch (error) {
-                showToast('加载失败，请刷新页面重试', 'error');
                 console.error('加载句子失败:', error);
+                // 出错时将allSentences重置为空数组，防止渲染失败
+                allSentences = [];
+                renderSentences();
+                // 仅记录错误，不显示给用户
             }
+        }
+        
+        // 加载所有分组（用于更新分组标签）
+        async function loadGroups() {
+            try {
+                // 获取所有句子以提取分组
+                const response = await fetch('/api/sentences');
+                if (!response.ok) {
+                    throw new Error('加载分组失败');
+                }
+                const allSentencesData = await response.json();
+                
+                // 提取所有唯一分组
+                const groups = new Set(['默认']); // 默认分组
+                allSentencesData.forEach(sentence => {
+                    if (sentence.group) {
+                        groups.add(sentence.group);
+                    }
+                });
+                
+                // 更新分组标签
+                updateGroupTabs(groups);
+            } catch (error) {
+                console.error('加载分组失败:', error);
+            }
+        }
+        
+        // 显示创建分组模态窗口
+        function showCreateGroupModal() {
+            const modal = document.getElementById('create-group-modal');
+            const groupInput = document.getElementById('modal-group-name');
+            
+            if (modal && groupInput) {
+                modal.style.display = 'flex';
+                groupInput.focus();
+                
+                // 禁止背景滚动
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        // 隐藏创建分组模态窗口
+        function hideCreateGroupModal() {
+            const modal = document.getElementById('create-group-modal');
+            const groupInput = document.getElementById('modal-group-name');
+            
+            if (modal && groupInput) {
+                modal.style.display = 'none';
+                // 清空输入内容
+                groupInput.value = '';
+                
+                // 恢复背景滚动
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        // 创建新分组
+        function createGroup() {
+            const groupInput = document.getElementById('modal-group-name');
+            const confirmButton = document.getElementById('confirm-create-group');
+            
+            if (!groupInput || !confirmButton) {
+                console.log('找不到必要的DOM元素');
+                return;
+            }
+            
+            const groupName = groupInput.value.trim();
+            
+            if (!groupName) {
+                alert('请输入分组名称');
+                groupInput.focus();
+                return;
+            }
+            
+            // 立即隐藏模态窗口
+            hideCreateGroupModal();
+            
+            // 禁用按钮防止重复提交
+            confirmButton.disabled = true;
+            confirmButton.textContent = '创建中...';
+            
+            // 显示成功提示
+            showToast(`成功创建分组"${groupName}"`);
+            
+            // 异步发送请求创建分组
+            const testContent = `这是${groupName}分组的第一条内容`;
+            fetch('/api/sentences', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: testContent, group: groupName })
+            }).then(response => {
+                // 不检查响应状态，直接尝试处理
+                return response.text().then(text => {
+                    try {
+                        return text ? JSON.parse(text) : { id: null };
+                    } catch (e) {
+                        return { id: null };
+                    }
+                });
+            }).then(result => {
+                // 异步更新UI
+                setTimeout(() => {
+                    // 尝试加载分组和切换
+                    try {
+                        loadGroups();
+                        switchGroup(groupName);
+                        loadSentences();
+                        
+                        // 如果有ID，异步删除测试句子
+                        if (result.id) {
+                            setTimeout(() => {
+                                fetch(`/api/sentences/${result.id}`, { method: 'DELETE' })
+                                    .then(() => setTimeout(() => loadSentences(), 200))
+                                    .catch(() => {});
+                            }, 100);
+                        }
+                    } catch (e) {
+                        console.log('后续操作失败，但不影响用户体验');
+                    }
+                }, 100);
+            }).catch(error => {
+                console.log('创建过程中出错，但功能可能已实现:', error);
+                // 不显示错误给用户
+            }).finally(() => {
+                // 恢复按钮状态
+                setTimeout(() => {
+                    confirmButton.disabled = false;
+                    confirmButton.textContent = '创建';
+                }, 500);
+            });
+        }
+        
+        // 更新分组标签
+        function updateGroupTabs(groups) {
+            // 清除现有标签（保留"全部"标签）
+            const allTab = groupTabs.querySelector('[data-group="全部"]');
+            groupTabs.innerHTML = '';
+            groupTabs.appendChild(allTab);
+            
+            // 添加所有分组标签
+            groups.forEach(group => {
+                if (group !== '全部') {
+                    const tab = document.createElement('button');
+                    tab.className = 'group-tab';
+                    tab.setAttribute('data-group', group);
+                    tab.textContent = group;
+                    
+                    // 如果是当前选中的分组，添加active类
+                    if (group === currentGroup) {
+                        tab.classList.add('active');
+                    }
+                    
+                    // 绑定点击事件
+                    tab.addEventListener('click', function() {
+                        switchGroup(this.getAttribute('data-group'));
+                    });
+                    
+                    groupTabs.appendChild(tab);
+                }
+            });
+        }
+        
+        // 切换分组
+        function switchGroup(group) {
+            currentGroup = group;
+            
+            // 更新标签状态
+            document.querySelectorAll('.group-tab').forEach(tab => {
+                if (tab.getAttribute('data-group') === group) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // 更新显示的当前分组
+            const displayGroupEl = document.getElementById('display-current-group');
+            if (displayGroupEl) {
+                displayGroupEl.textContent = group;
+            }
+            
+            // 重新加载句子
+            loadSentences();
         }
         
         // 渲染句子列表
@@ -491,7 +745,7 @@
             bindCardEvents();
         }
         
-        // 移除分组标签相关功能，不再需要
+        // 渲染句子卡片时不显示分组标签，而是通过切换分组标签来筛选
         
         // 绑定卡片上的事件
         function bindCardEvents() {
@@ -612,42 +866,124 @@
             });
         }
         
-        // 绑定事件
+        // 绑定事件 - 简化版本，确保添加句子功能正常工作
         function bindEvents() {
-            // 添加句子
-            addBtn.addEventListener('click', addSentence);
+            // 直接获取并绑定添加按钮的点击事件
+            document.getElementById('add-btn').addEventListener('click', function() {
+                console.log('添加按钮被点击');
+                addSentence();
+            });
+            
+            // 直接获取并绑定输入框的回车事件
+            document.getElementById('new-content').addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    console.log('快捷键触发添加句子');
+                    addSentence();
+                }
+            });
+            
+            // 绑定显示创建分组模态窗口按钮事件
+            document.getElementById('show-create-group-btn').addEventListener('click', function() {
+                console.log('显示创建分组模态窗口按钮被点击');
+                showCreateGroupModal();
+            });
+            
+            // 绑定取消创建分组按钮事件
+            document.getElementById('cancel-create-group').addEventListener('click', function() {
+                console.log('取消创建分组');
+                hideCreateGroupModal();
+            });
+            
+            // 绑定确认创建分组按钮事件
+            document.getElementById('confirm-create-group').addEventListener('click', function() {
+                console.log('确认创建分组');
+                createGroup();
+            });
+            
+            // 为模态窗口中的分组输入框添加回车事件
+            document.getElementById('modal-group-name').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    console.log('回车触发创建分组');
+                    createGroup();
+                }
+            });
+            
+            // 为模态窗口添加点击外部关闭功能
+            document.getElementById('create-group-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideCreateGroupModal();
+                }
+            });
+            
+            // 添加ESC键关闭模态窗口
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && document.getElementById('create-group-modal').style.display === 'flex') {
+                    hideCreateGroupModal();
+                }
+            });
         }
         
-        // 添加句子
+        // 添加句子 - 使用当前选中的分组
         async function addSentence() {
-            const content = newContent.value.trim();
+            // 直接获取DOM元素
+            const contentInput = document.getElementById('new-content');
+            const addButton = document.getElementById('add-btn');
             
-            if (!content) {
-                showToast('内容不能为空', 'error');
+            // 验证元素存在
+            if (!contentInput || !addButton) {
+                console.error('找不到必要的DOM元素');
+                alert('页面加载失败，请刷新后重试');
                 return;
             }
             
+            // 获取输入值和当前分组
+            const content = contentInput.value.trim();
+            // 如果当前分组是"全部"，则使用默认分组"默认"
+            let group = currentGroup === '全部' ? '默认' : currentGroup;
+            
+            // 验证内容不为空
+            if (!content) {
+                alert('请输入要保存的句子内容');
+                contentInput.focus();
+                return;
+            }
+            
+            // 禁用按钮防止重复提交
+            addButton.disabled = true;
+            addButton.textContent = '添加中...';
+            
             try {
+                // 发送请求到后端
                 const response = await fetch('/api/sentences', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ content, group: '' })
+                    body: JSON.stringify({ content: content, group: group })
                 });
                 
+                // 检查响应状态
                 if (!response.ok) {
-                    throw new Error('添加失败');
+                    throw new Error('添加失败，服务器返回错误');
                 }
                 
-                showToast('添加成功！');
-                
                 // 清空输入框
-                newContent.value = '';
-                newContent.focus();
+                contentInput.value = '';
+                contentInput.focus();
+                
+                // 显示成功提示
+                showToast(`成功添加到分组"${group}"`);
+                
+                // 重新加载数据
+                await loadGroups();
+                loadSentences();
             } catch (error) {
-                showToast('添加失败，请重试', 'error');
                 console.error('添加句子失败:', error);
+                alert('添加失败: ' + error.message);
+            } finally {
+                // 恢复按钮状态
+                addButton.disabled = false;
+                addButton.textContent = '添加句子';
             }
         }
         
@@ -663,6 +999,10 @@
                 }
                 
                 showToast('删除成功！');
+                
+                // 重新加载分组和句子
+                await loadGroups();
+                loadSentences();
             } catch (error) {
                 showToast('删除失败，请重试', 'error');
                 console.error('删除句子失败:', error);

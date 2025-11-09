@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,14 +22,19 @@ type Sentence struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// 模拟数据库
+// 数据存储
 var sentences []Sentence
 var sentenceMutex sync.Mutex
 var nextID = 1
+var dataFile = "./sentences.json"
 
 func main() {
-	// 初始化示例数据
-	initSampleData()
+	// 加载数据
+	loadData()
+	// 如果没有数据，初始化示例数据
+	if len(sentences) == 0 {
+		initSampleData()
+	}
 
 	// 注册路由处理函数
 	http.HandleFunc("/api/sentences", handleSentences)
@@ -138,24 +145,92 @@ func initSampleData() {
 		UpdatedAt: time.Now(),
 	})
 	nextID++
+	// 保存示例数据
+	saveData()
 }
 
-// 获取所有句子
+// 保存数据到文件
+func saveData() {
+	data, err := json.MarshalIndent(sentences, "", "  ")
+	if err != nil {
+		log.Printf("保存数据失败: %v", err)
+		return
+	}
+
+	err = ioutil.WriteFile(dataFile, data, 0644)
+	if err != nil {
+		log.Printf("写入文件失败: %v", err)
+	}
+}
+
+// 从文件加载数据
+func loadData() {
+	if _, err := os.Stat(dataFile); os.IsNotExist(err) {
+		// 文件不存在，创建一个空文件
+		_, err := os.Create(dataFile)
+		if err != nil {
+			log.Printf("创建数据文件失败: %v", err)
+		}
+		return
+	}
+
+	data, err := ioutil.ReadFile(dataFile)
+	if err != nil {
+		log.Printf("读取文件失败: %v", err)
+		return
+	}
+
+	if len(data) > 0 {
+		err = json.Unmarshal(data, &sentences)
+		if err != nil {
+			log.Printf("解析数据失败: %v", err)
+			return
+		}
+
+		// 更新nextID
+		if len(sentences) > 0 {
+			maxID := 0
+			for _, s := range sentences {
+				if s.ID > maxID {
+					maxID = s.ID
+				}
+			}
+			nextID = maxID + 1
+		}
+	}
+}
+
+// 获取句子列表，支持按分组筛选
 func getSentences(w http.ResponseWriter, r *http.Request) {
 	sentenceMutex.Lock()
 	defer sentenceMutex.Unlock()
 
+	// 获取分组参数
+	group := r.URL.Query().Get("group")
+	var filteredSentences []Sentence
+
+	// 按分组筛选
+	if group != "" && group != "全部" {
+		for _, s := range sentences {
+			if s.Group == group {
+				filteredSentences = append(filteredSentences, s)
+			}
+		}
+	} else {
+		filteredSentences = sentences
+	}
+
 	// 按复制次数排序
-	for i := 0; i < len(sentences)-1; i++ {
-		for j := 0; j < len(sentences)-i-1; j++ {
-			if sentences[j].CopyCount < sentences[j+1].CopyCount {
-				sentences[j], sentences[j+1] = sentences[j+1], sentences[j]
+	for i := 0; i < len(filteredSentences)-1; i++ {
+		for j := 0; j < len(filteredSentences)-i-1; j++ {
+			if filteredSentences[j].CopyCount < filteredSentences[j+1].CopyCount {
+				filteredSentences[j], filteredSentences[j+1] = filteredSentences[j], filteredSentences[j+1]
 			}
 		}
 	}
 
 	// 返回JSON响应
-	json.NewEncoder(w).Encode(sentences)
+	json.NewEncoder(w).Encode(filteredSentences)
 }
 
 // 添加新句子
@@ -197,6 +272,9 @@ func addSentence(w http.ResponseWriter, r *http.Request) {
 	sentences = append(sentences, s)
 	nextID++
 
+	// 保存数据
+	saveData()
+
 	// 返回创建的句子
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(s)
@@ -221,6 +299,9 @@ func deleteSentence(w http.ResponseWriter, r *http.Request, id int) {
 		http.Error(w, "句子不存在", http.StatusNotFound)
 		return
 	}
+
+	// 保存数据
+	saveData()
 
 	// 返回成功消息
 	response := map[string]string{"message": "删除成功"}
@@ -264,6 +345,9 @@ func updateSentence(w http.ResponseWriter, r *http.Request, id int) {
 		return
 	}
 
+	// 保存数据
+	saveData()
+
 	// 返回成功消息
 	response := map[string]string{"message": "更新成功"}
 	json.NewEncoder(w).Encode(response)
@@ -290,6 +374,9 @@ func copySentence(w http.ResponseWriter, r *http.Request, id int) {
 		http.Error(w, "句子不存在", http.StatusNotFound)
 		return
 	}
+
+	// 保存数据
+	saveData()
 
 	// 返回成功消息和复制的内容
 	response := map[string]string{
