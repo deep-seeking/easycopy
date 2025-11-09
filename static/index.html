@@ -323,10 +323,40 @@
         
         <!-- 删除残留的句子列表 -->
     </div>
-    
-    <!-- 删除编辑模态框 -->
-    
-    <!-- 提示框 -->
+        <!-- 分组右键菜单 -->
+        <div id="group-context-menu" style="display: none; position: fixed; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 2000;">
+            <div class="context-menu-item" data-action="rename">修改分组名</div>
+            <div class="context-menu-item" data-action="delete">删除分组</div>
+        </div>
+        
+        <!-- 重命名分组模态窗口 -->
+        <div id="rename-group-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+            <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">修改分组名</h3>
+                <div style="margin-bottom: 20px;">
+                    <label for="modal-rename-group" style="display: block; margin-bottom: 5px; font-weight: 500;">新分组名称</label>
+                    <input type="text" id="modal-rename-group" placeholder="请输入新的分组名称" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button id="cancel-rename-group" style="padding: 8px 16px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">取消</button>
+                    <button id="confirm-rename-group" style="padding: 8px 16px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer;">确认</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 删除分组确认模态窗口 -->
+        <div id="delete-group-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+            <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">删除分组</h3>
+                <p style="margin-bottom: 20px;">确定要删除分组"<span id="delete-group-name"></span>"吗？此操作将把该分组下的所有句子移动到默认分组。</p>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button id="cancel-delete-group" style="padding: 8px 16px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">取消</button>
+                    <button id="confirm-delete-group" style="padding: 8px 16px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">删除</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 提示框 -->
     <div class="toast" id="toast"></div>
     
     <style>
@@ -365,6 +395,17 @@
         
         .toast.success {
             background: rgba(52, 199, 89, 0.9);
+        }
+        
+        /* 右键菜单样式 */
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        
+        .context-menu-item:hover {
+            background-color: #f5f5f5;
         }
         
         /* 优化移动端体验的核心样式 */
@@ -458,6 +499,9 @@
         
         // 当前选中的分组
         let currentGroup = '全部';
+        
+        // 当前右键点击的分组
+        let currentRightClickedGroup = null;
         
         // 所有句子数据
         let allSentences = [];
@@ -677,9 +721,314 @@
                         switchGroup(this.getAttribute('data-group'));
                     });
                     
+                    // 绑定右键点击事件
+                    tab.addEventListener('contextmenu', function(e) {
+                        e.preventDefault(); // 阻止默认右键菜单
+                        showGroupContextMenu(e, group);
+                    });
+                    
                     groupTabs.appendChild(tab);
                 }
             });
+        }
+        
+        // 显示分组右键菜单
+        function showGroupContextMenu(event, group) {
+            try {
+                // 安全获取DOM元素
+                const contextMenu = document.getElementById('group-context-menu');
+                
+                // 健壮性检查
+                if (!contextMenu) {
+                    console.error('找不到右键菜单DOM元素');
+                    return;
+                }
+                
+                // 不允许操作默认分组
+                if (group === '默认' || group === '全部') {
+                    return;
+                }
+                
+                // 设置当前右键点击的分组
+                currentRightClickedGroup = group;
+                
+                // 定位右键菜单，添加边界检查确保菜单不会超出视口
+                const menuWidth = contextMenu.offsetWidth || 200; // 默认宽度作为后备
+                const menuHeight = contextMenu.offsetHeight || 100; // 默认高度作为后备
+                
+                let leftPos = event.clientX;
+                let topPos = event.clientY;
+                
+                // 确保菜单位于可视区域内
+                if (leftPos + menuWidth > window.innerWidth) {
+                    leftPos = window.innerWidth - menuWidth - 10;
+                }
+                if (topPos + menuHeight > window.innerHeight) {
+                    topPos = window.innerHeight - menuHeight - 10;
+                }
+                
+                contextMenu.style.left = leftPos + 'px';
+                contextMenu.style.top = topPos + 'px';
+                contextMenu.style.display = 'block';
+            } catch (error) {
+                console.error('显示右键菜单失败:', error);
+            }
+        }
+        
+        // 隐藏分组右键菜单
+        function hideGroupContextMenu(keepGroupInfo = false) {
+            try {
+                const contextMenu = document.getElementById('group-context-menu');
+                if (contextMenu) {
+                    contextMenu.style.display = 'none';
+                }
+                // 只有在不需要保留分组信息时才重置
+                if (!keepGroupInfo) {
+                    currentRightClickedGroup = null;
+                }
+            } catch (error) {
+                console.error('隐藏右键菜单失败:', error);
+            }
+        }
+        
+        // 显示重命名分组模态窗口
+        function showRenameGroupModal() {
+            const modal = document.getElementById('rename-group-modal');
+            const groupInput = document.getElementById('modal-rename-group');
+            
+            if (modal && groupInput && currentRightClickedGroup) {
+                // 隐藏右键菜单但保留分组信息
+                hideGroupContextMenu(true);
+                
+                // 设置默认值为当前分组名
+                groupInput.value = currentRightClickedGroup;
+                
+                modal.style.display = 'flex';
+                groupInput.focus();
+                
+                // 禁止背景滚动
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        // 隐藏重命名分组模态窗口
+        function hideRenameGroupModal() {
+            const modal = document.getElementById('rename-group-modal');
+            const groupInput = document.getElementById('modal-rename-group');
+            
+            if (modal && groupInput) {
+                modal.style.display = 'none';
+                // 清空输入内容
+                groupInput.value = '';
+                
+                // 恢复背景滚动
+                document.body.style.overflow = 'auto';
+            }
+            
+            // 无论模态窗口是否存在，都重置当前右键点击的分组
+            currentRightClickedGroup = null;
+        }
+        
+        // 重命名分组
+        async function renameGroup() {
+            try {
+                // 安全获取DOM元素
+                const groupInput = document.getElementById('modal-rename-group');
+                const confirmButton = document.getElementById('confirm-rename-group');
+                
+                // 健壮性检查
+                if (!groupInput || !confirmButton) {
+                    console.error('找不到必要的模态窗口DOM元素');
+                    showToast('操作失败：页面元素加载不完整', 'error');
+                    return;
+                }
+                
+                // 保存当前要重命名的分组名，防止后续操作中被重置
+                const groupToRename = currentRightClickedGroup;
+                
+                if (!groupToRename) {
+                    console.error('未找到当前右键点击的分组信息');
+                    showToast('操作失败：请重新选择要修改的分组', 'error');
+                    hideRenameGroupModal();
+                    return;
+                }
+                
+                const newGroupName = groupInput.value.trim();
+                
+                if (!newGroupName) {
+                    alert('请输入分组名称');
+                    groupInput.focus();
+                    return;
+                }
+                
+                // 禁用按钮防止重复提交
+                confirmButton.disabled = true;
+                confirmButton.textContent = '修改中...';
+                
+                // 获取所有句子
+                const response = await fetch('/api/sentences');
+                if (!response.ok) {
+                    throw new Error('获取数据失败');
+                }
+                const allSentencesData = await response.json();
+                
+                // 找出需要修改分组的句子
+                const sentencesToUpdate = allSentencesData.filter(sentence => 
+                    sentence.group === groupToRename
+                );
+                
+                // 立即隐藏模态窗口
+                hideRenameGroupModal();
+                
+                // 更新每个句子的分组
+                const updatePromises = sentencesToUpdate.map(sentence => 
+                    fetch(`/api/sentences/${sentence.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            content: sentence.content, 
+                            group: newGroupName 
+                        })
+                    })
+                );
+                
+                await Promise.all(updatePromises);
+                
+                // 显示成功提示
+                showToast(`成功修改分组名"${groupToRename}"为"${newGroupName}"`);
+                
+                // 如果当前正在查看被修改的分组，切换到新分组
+                if (currentGroup === groupToRename) {
+                    currentGroup = newGroupName;
+                }
+                
+                // 重新加载数据
+                await loadGroups();
+                loadSentences();
+            } catch (error) {
+                console.error('重命名分组失败:', error);
+                showToast('重命名分组失败，请重试', 'error');
+            } finally {
+                // 恢复按钮状态 - 使用安全的方式
+                const confirmButton = document.getElementById('confirm-rename-group');
+                if (confirmButton) {
+                    setTimeout(() => {
+                        confirmButton.disabled = false;
+                        confirmButton.textContent = '确认';
+                    }, 500);
+                }
+            }
+        }
+        
+        // 显示删除分组模态窗口
+        function showDeleteGroupModal() {
+            const modal = document.getElementById('delete-group-modal');
+            const groupNameElement = document.getElementById('delete-group-name');
+            
+            if (modal && groupNameElement && currentRightClickedGroup) {
+                // 隐藏右键菜单但保留分组信息
+                hideGroupContextMenu(true);
+                
+                // 设置要删除的分组名
+                groupNameElement.textContent = currentRightClickedGroup;
+                
+                modal.style.display = 'flex';
+                
+                // 禁止背景滚动
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        // 隐藏删除分组模态窗口
+        function hideDeleteGroupModal() {
+            const modal = document.getElementById('delete-group-modal');
+            
+            if (modal) {
+                modal.style.display = 'none';
+                
+                // 恢复背景滚动
+                document.body.style.overflow = 'auto';
+            }
+            
+            // 无论模态窗口是否存在，都重置当前右键点击的分组
+            currentRightClickedGroup = null;
+        }
+        
+        // 删除分组
+        async function deleteGroup() {
+            try {
+                // 安全获取DOM元素
+                const confirmButton = document.getElementById('confirm-delete-group');
+                
+                // 健壮性检查
+                if (!confirmButton) {
+                    console.error('找不到必要的模态窗口DOM元素');
+                    showToast('操作失败：页面元素加载不完整', 'error');
+                    return;
+                }
+                
+                if (!currentRightClickedGroup) {
+                    console.error('未找到当前右键点击的分组信息');
+                    showToast('操作失败：请重新选择要删除的分组', 'error');
+                    hideDeleteGroupModal();
+                    return;
+                }
+                
+                // 保存当前要删除的分组名，防止后续操作中被重置
+                const groupToDelete = currentRightClickedGroup;
+                
+                // 禁用按钮防止重复提交
+                confirmButton.disabled = true;
+                confirmButton.textContent = '删除中...';
+                
+                // 获取所有句子
+                const response = await fetch('/api/sentences');
+                if (!response.ok) {
+                    throw new Error('获取数据失败');
+                }
+                const allSentencesData = await response.json();
+                
+                // 找出需要删除的句子（属于当前分组的句子）
+                const sentencesToDelete = allSentencesData.filter(sentence => 
+                    sentence.group === groupToDelete
+                );
+                
+                // 立即隐藏模态窗口
+                hideDeleteGroupModal();
+                
+                // 执行删除操作，对每个句子发送DELETE请求
+                const deletePromises = sentencesToDelete.map(sentence => 
+                    fetch(`/api/sentences/${sentence.id}`, {
+                        method: 'DELETE'
+                    })
+                );
+                
+                await Promise.all(deletePromises);
+                
+                // 显示成功提示
+                showToast(`成功删除分组"${groupToDelete}"及其下的${sentencesToDelete.length}个句子`);
+                
+                // 如果当前正在查看被删除的分组，切换到默认分组
+                if (currentGroup === groupToDelete) {
+                    currentGroup = '默认';
+                }
+                
+                // 重新加载数据
+                await loadGroups();
+                loadSentences();
+            } catch (error) {
+                console.error('删除分组失败:', error);
+                showToast('删除分组失败，请重试', 'error');
+            } finally {
+                // 恢复按钮状态 - 使用安全的方式
+                const confirmButton = document.getElementById('confirm-delete-group');
+                if (confirmButton) {
+                    setTimeout(() => {
+                        confirmButton.disabled = false;
+                        confirmButton.textContent = '删除';
+                    }, 500);
+                }
+            }
         }
         
         // 切换分组
@@ -868,6 +1217,113 @@
         
         // 绑定事件 - 简化版本，确保添加句子功能正常工作
         function bindEvents() {
+            // 点击页面其他地方关闭右键菜单
+            document.addEventListener('click', function() {
+                hideGroupContextMenu();
+            });
+            
+            // 为右键菜单选项绑定事件
+            const contextMenu = document.getElementById('group-context-menu');
+            if (contextMenu) {
+                // 阻止右键菜单内部点击关闭菜单
+                contextMenu.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+                
+                // 重命名选项
+                contextMenu.querySelector('.context-menu-item[data-action="rename"]').addEventListener('click', function() {
+                    showRenameGroupModal();
+                });
+                
+                // 删除选项
+                contextMenu.querySelector('.context-menu-item[data-action="delete"]').addEventListener('click', function() {
+                    showDeleteGroupModal();
+                });
+            }
+            
+            // 绑定取消重命名分组按钮事件
+            const cancelRenameBtn = document.getElementById('cancel-rename-group');
+            if (cancelRenameBtn) {
+                cancelRenameBtn.addEventListener('click', function() {
+                    hideRenameGroupModal();
+                });
+            }
+            
+            // 绑定确认重命名分组按钮事件
+            const confirmRenameBtn = document.getElementById('confirm-rename-group');
+            if (confirmRenameBtn) {
+                confirmRenameBtn.addEventListener('click', function() {
+                    renameGroup();
+                });
+            }
+            
+            // 为模态窗口中的重命名输入框添加回车事件
+            const renameInput = document.getElementById('modal-rename-group');
+            if (renameInput) {
+                renameInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        renameGroup();
+                    }
+                });
+            }
+            
+            // 为重命名模态窗口添加点击外部关闭功能
+            const renameModal = document.getElementById('rename-group-modal');
+            if (renameModal) {
+                renameModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        hideRenameGroupModal();
+                    }
+                });
+            }
+            
+            // 绑定取消删除分组按钮事件
+            const cancelDeleteBtn = document.getElementById('cancel-delete-group');
+            if (cancelDeleteBtn) {
+                cancelDeleteBtn.addEventListener('click', function() {
+                    hideDeleteGroupModal();
+                });
+            }
+            
+            // 绑定确认删除分组按钮事件
+            const confirmDeleteBtn = document.getElementById('confirm-delete-group');
+            if (confirmDeleteBtn) {
+                confirmDeleteBtn.addEventListener('click', function() {
+                    deleteGroup();
+                });
+            }
+            
+            // 为删除模态窗口添加点击外部关闭功能
+            const deleteModal = document.getElementById('delete-group-modal');
+            if (deleteModal) {
+                deleteModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        hideDeleteGroupModal();
+                    }
+                });
+            }
+            
+            // 添加ESC键关闭所有模态窗口
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    hideGroupContextMenu();
+                    
+                    const renameModal = document.getElementById('rename-group-modal');
+                    if (renameModal && renameModal.style.display === 'flex') {
+                        hideRenameGroupModal();
+                    }
+                    
+                    const deleteModal = document.getElementById('delete-group-modal');
+                    if (deleteModal && deleteModal.style.display === 'flex') {
+                        hideDeleteGroupModal();
+                    }
+                    
+                    const createModal = document.getElementById('create-group-modal');
+                    if (createModal && createModal.style.display === 'flex') {
+                        hideCreateGroupModal();
+                    }
+                }
+            });
             // 直接获取并绑定添加按钮的点击事件
             document.getElementById('add-btn').addEventListener('click', function() {
                 console.log('添加按钮被点击');
@@ -915,12 +1371,7 @@
                 }
             });
             
-            // 添加ESC键关闭模态窗口
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && document.getElementById('create-group-modal').style.display === 'flex') {
-                    hideCreateGroupModal();
-                }
-            });
+            // 原有模态窗口相关事件已移至上方统一处理
         }
         
         // 添加句子 - 使用当前选中的分组
