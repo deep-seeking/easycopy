@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -42,8 +43,21 @@ func main() {
 	http.HandleFunc("/", handleRoot)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
+	// 获取并打印所有可用的IP地址
+	log.Println("服务器启动在:")
+	log.Println("  http://localhost:8080")
+	
+	// 获取本地IP地址
+	addrs, err := net.InterfaceAddrs()
+	if err == nil {
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+				log.Printf("  http://%s:8080", ipnet.IP.String())
+			}
+		}
+	}
+	
 	// 启动服务器
-	log.Println("服务器启动在 http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("启动服务器失败: %v", err)
 	}
