@@ -1100,19 +1100,8 @@
         function bindCardEvents() {
             // 处理点击事件 - 核心优化版，完全消除页面动荡
             function handleCardTap(e) {
-                // 禁止触摸事件的默认行为，防止页面滚动
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // 锁定滚动，防止任何意外的滚动行为
-                document.body.style.overflow = 'hidden';
-                document.documentElement.style.overflow = 'hidden';
-                
                 // 如果点击的是删除按钮，不执行复制操作
                 if (e.target.closest('.delete-btn')) {
-                    // 恢复滚动
-                    document.body.style.overflow = '';
-                    document.documentElement.style.overflow = '';
                     return;
                 }
                         
@@ -1121,42 +1110,98 @@
                 const sentence = allSentences.find(s => s.id === parseInt(id));
                 
                 try {
-                    // 优化的复制方法，确保不会影响页面布局
-                    const textArea = document.createElement('textarea');
-                    textArea.value = sentence.content;
-                    // 使用绝对定位和z-index确保元素不会影响页面布局
-                    textArea.style.position = 'fixed';
-                    textArea.style.top = '-9999px';
-                    textArea.style.left = '-9999px';
-                    textArea.style.opacity = '0';
-                    textArea.style.pointerEvents = 'none';
-                    textArea.style.height = '1px';
-                    textArea.style.width = '1px';
-                    textArea.style.zIndex = '-1';
-                    textArea.style.border = 'none';
-                    textArea.style.outline = 'none';
-                    textArea.style.padding = '0';
-                    textArea.style.margin = '0';
-                    document.body.appendChild(textArea);
-                    
-                    // 尝试不同的选择方法
-                    textArea.focus();
-                    textArea.select();
-                    textArea.setSelectionRange(0, 999999);
-                    
-                    // 执行复制
-                    const success = document.execCommand('copy');
-                    
-                    // 立即移除元素，不等待动画帧
-                    if (document.body.contains(textArea)) {
-                        document.body.removeChild(textArea);
+                    // 使用现代的Clipboard API，避免创建DOM元素和焦点操作
+                    if (navigator.clipboard && window.isSecureContext) {
+                        // 首选使用现代API
+                        navigator.clipboard.writeText(sentence.content)
+                            .then(() => {
+                                // 更新计数和显示成功提示
+                                updateCopyCount();
+                                showToast('复制成功！');
+                            })
+                            .catch(() => {
+                                // 降级到备用方法
+                                fallbackCopyText(sentence.content);
+                            });
+                    } else {
+                        // 降级到备用方法
+                        fallbackCopyText(sentence.content);
                     }
                     
-                    // 短暂延迟后恢复滚动，确保复制操作完成
-                    setTimeout(() => {
-                        document.body.style.overflow = '';
-                        document.documentElement.style.overflow = '';
-                    }, 100);
+                    // 定义备用复制方法
+                    function fallbackCopyText(text) {
+                        // 使用Selection API创建不可见的选择
+                        const selection = window.getSelection();
+                        const originalRange = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+                        
+                        // 创建一个隐藏的临时元素
+                        const tempDiv = document.createElement('div');
+                        tempDiv.textContent = text;
+                        tempDiv.style.position = 'fixed';
+                        tempDiv.style.left = '-9999px';
+                        tempDiv.style.top = '-9999px';
+                        tempDiv.style.opacity = '0';
+                        tempDiv.style.pointerEvents = 'none';
+                        tempDiv.style.userSelect = 'text';
+                        tempDiv.style.webkitUserSelect = 'text';
+                        tempDiv.style.MozUserSelect = 'text';
+                        tempDiv.style.msUserSelect = 'text';
+                        document.body.appendChild(tempDiv);
+                        
+                        // 创建选择范围但不聚焦
+                        const range = document.createRange();
+                        range.selectNodeContents(tempDiv);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        
+                        // 执行复制
+                        let success = false;
+                        try {
+                            success = document.execCommand('copy');
+                        } catch (err) {
+                            console.error('复制失败:', err);
+                        }
+                        
+                        // 恢复原始选择
+                        selection.removeAllRanges();
+                        if (originalRange) {
+                            selection.addRange(originalRange);
+                        }
+                        
+                        // 移除临时元素
+                        document.body.removeChild(tempDiv);
+                        
+                        // 更新计数和显示提示
+                        updateCopyCount();
+                        showToast(success ? '复制成功！' : '复制失败，请手动复制', success ? '' : 'error');
+                    }
+                    
+                    // 抽取更新计数的逻辑为单独函数
+                    function updateCopyCount() {
+                        // 更新计数完全异步化
+                        setTimeout(() => {
+                            fetch(`/api/sentences/${id}/copy`, { 
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            }).then(() => {
+                                // 更新内存中的数据
+                                const sentenceIndex = allSentences.findIndex(s => s.id === parseInt(id));
+                                if (sentenceIndex !== -1) {
+                                    allSentences[sentenceIndex].copy_count += 1;
+                                    
+                                    // 最小化DOM更新
+                                    requestAnimationFrame(() => {
+                                        const copyCountEl = cardElement.querySelector('.copy-count');
+                                        if (copyCountEl) {
+                                            copyCountEl.textContent = allSentences[sentenceIndex].copy_count.toString();
+                                        }
+                                    });
+                                }
+                            }).catch(err => console.error('更新计数失败:', err));
+                        }, 50);
+                    }
                     
                     // 更新计数完全异步化，使用防抖
                     setTimeout(() => {
@@ -1199,8 +1244,8 @@
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
                 
-                // 只绑定click事件，并使用passive选项
-                newCard.addEventListener('click', handleCardTap, { passive: true });
+                // 只绑定click事件
+                newCard.addEventListener('click', handleCardTap);
             });
             
             // 删除按钮
