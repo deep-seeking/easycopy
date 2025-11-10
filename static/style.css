@@ -1,0 +1,501 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden; /* 防止水平滚动 */
+    overflow-y: auto; /* 启用垂直滚动，确保所有内容都能访问 */
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+html {
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100%;
+    scroll-behavior: auto;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 0; /* 进一步减小padding */
+    text-align: center;
+    margin-bottom: 15px; /* 进一步减小底部间距 */
+    border-radius: 6px; /* 进一步减小圆角 */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* 进一步减小阴影 */
+}
+
+h1 {
+    font-size: 1.3rem; /* 进一步减小标题大小 */
+    margin-bottom: 3px; /* 进一步减小底部间距 */
+    font-weight: 600;
+}
+
+.subtitle {
+    font-size: 0.8rem; /* 进一步减小副标题大小 */
+    opacity: 0.85; /* 稍微降低不透明度 */
+}
+
+.add-section {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #555;
+}
+
+input[type="text"],
+textarea,
+select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+input[type="text"]:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+}
+
+button {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+button:hover {
+    background: #5a67d8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.sentences-container {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 分组标签样式 */
+.group-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.group-tab {
+    padding: 8px 16px;
+    background: #f5f5f5;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.group-tab:hover {
+    background: #e9e9e9;
+}
+
+.group-tab.active {
+    background: #667eea;
+    color: white;
+}
+
+/* 分组选择输入样式 */
+.group-selector {
+    margin-bottom: 20px;
+}
+
+.sentence-list {
+    display: block; /* 改为上下排列布局 */
+}
+
+.sentence-card {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding: 8px;
+    margin-bottom: 5px; /* 减小卡片间距 */
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: pan-y;
+}
+
+/* 优化触摸状态，避免导致页面动荡的变化 */
+.sentence-card:active {
+    transform: none !important;
+    background-color: rgba(0, 128, 0, 0.05) !important;
+}
+
+/* Safari移动端兼容性处理 */
+.sentence-card {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.sentence-card:focus,
+.sentence-card:hover {
+    outline: none !important;
+}
+
+/* 简化点击效果，使用透明度变化提供视觉反馈 */
+.sentence-card.clicked {
+    transition: opacity 0.2s ease;
+    opacity: 0.7;
+}
+
+.sentence-content {
+    font-size: 0.95rem; /* 稍微减小字体大小 */
+    line-height: 1.5; /* 调整行高 */
+    word-break: break-word;
+    -webkit-user-select: text;
+    user-select: text;
+    flex: 1;
+}
+
+/* 移除了sentence-footer相关样式 */
+
+.sentence-actions {
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 6px; /* 减少按钮间距 */
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px; /* 减小按钮内边距 */
+    border-radius: 3px; /* 减小圆角 */
+    font-size: 0.75rem; /* 减小字体大小 */
+    transition: background-color 0.2s; /* 简化过渡效果 */
+}
+
+/* 复制按钮样式 */
+.copy-btn {
+    background: #4caf50;
+    color: white;
+}
+
+.copy-btn:hover {
+    background: #45a049;
+}
+
+/* 删除按钮样式 */
+.delete-btn {
+    background: #f44336;
+    color: white;
+}
+
+.delete-btn:hover {
+    background: #da190b;
+}
+
+/* 媒体查询：移动端隐藏删除按钮 */
+@media (max-width: 768px) {
+    .sentence-actions {
+        display: none;
+    }
+}
+
+/* 移除编辑按钮相关样式 */
+.edit-btn {
+    display: none;
+}
+
+/* 复制次数样式 */
+.copy-count {
+    margin-right: 12px;
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+    min-width: 24px;
+    text-align: right;
+}
+
+/* 列表容器样式优化 - 这是唯一可滚动的元素 */
+#sentence-list {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* 启用iOS平滑滚动 */
+    padding: 10px;
+    position: relative;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    height: calc(100vh - 120px); /* 固定高度，确保不会影响页面大小 */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 当前分组信息样式 */
+.current-group-info {
+    margin-bottom: 15px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* 简化toast样式，移除可能导致页面动荡的过渡效果 */
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    z-index: 1000;
+    /* 完全移除过渡效果 */
+    opacity: 0;
+    pointer-events: none;
+    box-shadow: none;
+}
+
+.toast.show {
+    opacity: 1;
+}
+
+.toast.error {
+    background: rgba(235, 87, 87, 0.9);
+}
+
+.toast.success {
+    background: rgba(52, 199, 89, 0.9);
+}
+
+/* 右键菜单样式 */
+.context-menu-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.context-menu-item:hover {
+    background-color: #f5f5f5;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .container {
+        padding: 8px; /* 减小容器内边距 */
+    }
+    
+    header {
+        padding: 12px 0; /* 进一步减小标题栏内边距 */
+        margin-bottom: 5px; /* 进一步减小底部间距 */
+    }
+    
+    h1 {
+        font-size: 1.1rem; /* 进一步减小标题大小 */
+    }
+    
+    .subtitle {
+        font-size: 0.75rem; /* 进一步减小副标题大小 */
+    }
+    
+    .add-section {
+        padding: 15px; /* 减小添加区域内边距 */
+        margin-bottom: 15px; /* 减小底部间距 */
+    }
+    
+    .sentences-container {
+        padding: 15px; /* 减小句子容器内边距 */
+    }
+    
+    .sentence-card {
+        padding: 6px 12px; /* 进一步减小卡片内边距 */
+        margin-bottom: 4px; /* 进一步减小卡片间距 */
+    }
+}
+
+/* 当前分组信息样式 */
+.current-group-info {
+    margin-bottom: 15px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* 简化toast样式，移除可能导致页面动荡的过渡效果 */
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    z-index: 1000;
+    /* 完全移除过渡效果 */
+    opacity: 0;
+    pointer-events: none;
+    box-shadow: none;
+}
+
+.toast.show {
+    opacity: 1;
+}
+
+.toast.error {
+    background: rgba(235, 87, 87, 0.9);
+}
+
+.toast.success {
+    background: rgba(52, 199, 89, 0.9);
+}
+
+/* 右键菜单样式 */
+.context-menu-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.context-menu-item:hover {
+    background-color: #f5f5f5;
+}
+
+/* 优化移动端体验的核心样式 */
+body {
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden; /* 防止水平滚动 */
+    overflow-y: auto; /* 启用垂直滚动，确保所有内容都能访问 */
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+html {
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100%;
+    scroll-behavior: auto;
+}
+
+/* 句子卡片样式 - 恢复基本视觉效果同时优化移动端 */
+.sentence-card {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding: 8px;
+    margin-bottom: 5px; /* 减小卡片间距 */
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: pan-y;
+}
+
+/* 优化触摸状态，避免导致页面动荡的变化 */
+.sentence-card:active {
+    transform: none !important;
+    background-color: rgba(0, 128, 0, 0.05) !important;
+}
+
+/* Safari移动端兼容性处理 */
+.sentence-card {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.sentence-card:focus,
+.sentence-card:hover {
+    outline: none !important;
+}
+
+/* 简化点击效果，使用透明度变化提供视觉反馈 */
+.sentence-card.clicked {
+    transition: opacity 0.2s ease;
+    opacity: 0.7;
+}
+
+/* 复制次数样式 */
+.copy-count {
+    margin-right: 12px;
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+    min-width: 24px;
+    text-align: right;
+}
+
+/* 确保句子内容可以被复制 */
+.sentence-content {
+    -webkit-user-select: text;
+    user-select: text;
+    flex: 1;
+}
+
+/* 列表容器样式优化 - 这是唯一可滚动的元素 */
+#sentence-list {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* 启用iOS平滑滚动 */
+    padding: 10px;
+    position: relative;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    height: calc(100vh - 120px); /* 固定高度，确保不会影响页面大小 */
+    width: 100%;
+    box-sizing: border-box;
+}
