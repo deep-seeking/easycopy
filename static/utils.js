@@ -16,7 +16,7 @@ let currentRightClickedGroup = null;
 let allSentences = [];
 
 // 轮询间隔（毫秒）
-const pollingInterval = 30000;
+const pollingInterval = 5000;
 
 // 初始化
 function init() {
@@ -39,13 +39,43 @@ function init() {
     bindEvents();
 }
 
+// 轮询ID，用于管理定时器
+let pollingId = null;
+
 // 开始轮询数据
 function startPolling() {
     // 立即执行一次
     loadSentences();
     
     // 设置定时器定期轮询
-    setInterval(loadSentences, pollingInterval);
+    pollingId = setInterval(loadSentences, pollingInterval);
+    
+    // 添加页面可见性变化监听器
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
+// 停止轮询
+function stopPolling() {
+    if (pollingId !== null) {
+        clearInterval(pollingId);
+        pollingId = null;
+    }
+}
+
+// 处理页面可见性变化
+function handleVisibilityChange() {
+    if (document.visibilityState === 'hidden') {
+        // 页面不可见时停止轮询
+        stopPolling();
+    } else if (document.visibilityState === 'visible') {
+        // 页面可见时重新启动轮询
+        if (pollingId === null) {
+            // 立即加载一次数据
+            loadSentences();
+            // 重新设置轮询
+            pollingId = setInterval(loadSentences, pollingInterval);
+        }
+    }
 }
 
 // 加载句子数据
