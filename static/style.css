@@ -459,6 +459,34 @@ button:active {
     background: rgba(235, 87, 87, 0.9);
 }
 
+.merit-animation {
+    animation: meritFloat 1s ease-out forwards;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+    font-family: 'Arial', sans-serif;
+}
+
+@keyframes meritFloat {
+    0% {
+        transform: translate(-50%, -50%);
+        opacity: 0;
+        color: #ff6b6b;
+        font-size: 14px;
+    }
+    20% {
+        transform: translate(-50%, -50%);
+        opacity: 1;
+        font-size: 16px;
+    }
+    100% {
+        transform: translate(-50%, -120px);
+        opacity: 0;
+        color: #ff8e8e;
+    }
+}
+
 .toast.success {
     background: rgba(52, 199, 89, 0.9);
 }

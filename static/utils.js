@@ -151,6 +151,8 @@ function bindCardEvents() {
                     .then(() => {
                         // 不再需要更新计数，直接显示成功提示
                         showToast('复制成功！');
+                        // 显示功德+1动画
+                        showMeritAnimation(cardElement);
                     })
                     .catch(() => {
                         // 降级到备用方法
@@ -206,6 +208,10 @@ function bindCardEvents() {
                 
                 // 不再需要更新计数，直接显示提示
                 showToast(success ? '复制成功！' : '复制失败，请手动复制', success ? '' : 'error');
+                // 如果复制成功，显示功德+1动画
+                if (success) {
+                    showMeritAnimation(cardElement);
+                }
             }
             
             // 不再需要更新复制计数，因为我们已经移除了相关显示功能
@@ -384,6 +390,36 @@ function showToast(message, type = 'success') {
             }
         });
     }, 1500);
+}
+
+// 显示功德+1动画
+function showMeritAnimation(element) {
+    // 创建功德+1元素
+    const meritElement = document.createElement('div');
+    meritElement.className = 'merit-animation';
+    meritElement.textContent = '功德+1';
+    
+    // 设置初始位置 - 相对于点击的元素
+    const rect = element.getBoundingClientRect();
+    const x = rect.left + rect.width / 2; // 元素中心点
+    const y = rect.top;
+    
+    // 只保留基本位置样式
+    meritElement.style.position = 'fixed';
+    meritElement.style.left = x + 'px';
+    meritElement.style.top = y + 'px';
+    meritElement.style.pointerEvents = 'none';
+    meritElement.style.zIndex = '1000';
+    
+    // 添加到页面，CSS动画会自动触发
+    document.body.appendChild(meritElement);
+    
+    // 动画结束后移除元素
+    setTimeout(() => {
+        if (meritElement.parentNode) {
+            document.body.removeChild(meritElement);
+        }
+    }, 1000);
 }
 
 // HTML转义
