@@ -41,6 +41,118 @@
         </div>
     </div>
         
+    <canvas id="inline-particles" style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; background-color:transparent; pointer-events: none;"></canvas>
+      <script>
+        // 内联粒子效果 - 蛛丝连结版本
+        console.log('内联粒子效果开始执行');
+        
+        // 检测是否为PC端（屏幕宽度大于768px）
+        if (window.innerWidth > 768) {
+          console.log('检测到PC端，初始化粒子效果');
+          
+          // 获取canvas
+          var canvas = document.getElementById('inline-particles');
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          var ctx = canvas.getContext('2d');
+          
+          // 粒子配置
+          var particles = [];
+          var particleCount = 50; // 增加粒子数量
+          var connectDistance = 150; // 粒子连线最大距离
+          
+          // 创建粒子
+          function createParticles() {
+            particles = [];
+            for (var i = 0; i < particleCount; i++) {
+              particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: 3 + Math.random() * 3, // 小粒子，更适合连线效果
+                speedX: (Math.random() - 0.5) * 1,
+                speedY: (Math.random() - 0.5) * 1,
+                color: '#999999' // 灰色粒子
+              });
+            }
+          }
+          
+          // 连接粒子的函数
+          function connectParticles() {
+            for (var a = 0; a < particles.length; a++) {
+              for (var b = a; b < particles.length; b++) {
+                var dx = particles[a].x - particles[b].x;
+                var dy = particles[a].y - particles[b].y;
+                var distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // 当粒子距离小于设定值时，绘制连线
+                if (distance < connectDistance) {
+                  // 连线透明度随距离变化
+                  var opacity = 1 - distance / connectDistance;
+                  
+                  ctx.beginPath();
+                  ctx.strokeStyle = 'rgba(153, 153, 153, ' + opacity * 0.6 + ')';
+                  ctx.lineWidth = 0.8;
+                  ctx.moveTo(particles[a].x, particles[a].y);
+                  ctx.lineTo(particles[b].x, particles[b].y);
+                  ctx.stroke();
+                }
+              }
+            }
+          }
+          
+          // 动画循环
+          function animate() {
+            // 清除画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 先绘制连线（在粒子下方）
+            connectParticles();
+            
+            // 绘制和更新粒子
+            for (var i = 0; i < particles.length; i++) {
+              var p = particles[i];
+              
+              // 绘制粒子
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+              ctx.fillStyle = p.color;
+              ctx.fill();
+              
+              // 更新位置
+              p.x += p.speedX;
+              p.y += p.speedY;
+              
+              // 边界检测和反弹
+              if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+              if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+            }
+            
+            // 继续动画
+            requestAnimationFrame(animate);
+          }
+          
+          // 窗口大小变化时重设canvas
+          window.addEventListener('resize', function() {
+            // 只在PC端调整canvas大小
+            if (window.innerWidth > 768) {
+              canvas.width = window.innerWidth;
+              canvas.height = window.innerHeight;
+            } else {
+              // 如果调整为移动设备尺寸，隐藏canvas
+              document.getElementById('inline-particles').style.display = 'none';
+            }
+          });
+          
+          // 初始化和启动
+          createParticles();
+          animate();
+          console.log('蛛丝连结粒子动画已启动');
+        } else {
+          console.log('检测到移动设备，不初始化粒子效果');
+          // 在移动设备上隐藏canvas
+          document.getElementById('inline-particles').style.display = 'none';
+        }
+      </script>
         <!-- 提示框 -->
     <div class="toast" id="toast"></div>
     <script src="/static/utils.js"></script>
