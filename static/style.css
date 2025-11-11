@@ -154,7 +154,7 @@ textarea {
 
 button {
     background: #667eea;
-    color: white;
+    color: black;
     border: none;
     padding: 12px 24px;
     border-radius: 6px;
@@ -487,8 +487,13 @@ button:active {
 /* 当前分组信息样式 */
 .current-group-info {
     margin-bottom: 5px;
-    color: #666;
+    color: #333;
     font-size: 0.9rem;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
 }
 
 /* 简化toast样式，移除可能导致页面动荡的过渡效果 */
@@ -586,6 +591,10 @@ button:active {
     
     .add-section {
         display: none; /* 隐藏添加话术容器 */
+    }
+    
+    #show-create-group-btn {
+        display: none; /* 在移动端隐藏创建分组按钮 */
     }
     
     .sentences-container {
