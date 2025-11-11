@@ -40,8 +40,11 @@
             <button id="add-btn">添加话术</button>
         </div>
     </div>
-        
-    <canvas id="inline-particles" style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; background-color:transparent; pointer-events: none;"></canvas>
+          
+      <!-- 背景图片层 -->
+      <div id="bg-image" style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:-2; background-image: url('./static/IMG_3671.JPG'); background-size: cover; background-position: center; background-repeat: no-repeat;"></div>
+          
+      <canvas id="inline-particles" style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; background-color:transparent; pointer-events: none;"></canvas>
       <script>
         // 内联粒子效果 - 蛛丝连结版本
         console.log('内联粒子效果开始执行');
