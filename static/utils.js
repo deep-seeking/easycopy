@@ -1,16 +1,10 @@
-// DOM元素 - 使用let而不是const，因为我们需要在运行时更新这些引用
+// DOM元素
 let addBtn = document.getElementById('add-btn');
 let newContent = document.getElementById('new-content');
-let newGroup = document.getElementById('new-group');
 let sentenceList = document.getElementById('sentence-list');
-let groupTabs = document.getElementById('group-tabs');
 let toast = document.getElementById('toast');
 
-// 当前选中的分组
-let currentGroup = '全部';
-
-// 当前右键点击的分组
-let currentRightClickedGroup = null;
+// 所有句子数据
 
 // 所有句子数据
 let allSentences = [];
@@ -20,15 +14,6 @@ const pollingInterval = 5000;
 
 // 初始化
 function init() {
-    // 绑定"全部"分组标签的点击事件
-    const allTab = document.querySelector('.group-tab[data-group="全部"]');
-    allTab.addEventListener('click', function() {
-        switchGroup('全部');
-    });
-    
-    // 加载分组
-    loadGroups();
-    
     // 加载句子数据
     loadSentences();
     
@@ -81,13 +66,7 @@ function handleVisibilityChange() {
 // 加载句子数据
 async function loadSentences() {
     try {
-        // 构建请求URL，添加分组参数
-        let url = '/api/sentences';
-        if (currentGroup !== '全部') {
-            url += '?group=' + encodeURIComponent(currentGroup);
-        }
-        
-        const response = await fetch(url);
+        const response = await fetch('/api/sentences');
         if (!response.ok) {
             throw new Error('加载失败');
         }
@@ -105,501 +84,11 @@ async function loadSentences() {
     }
 }
 
-// 加载所有分组（用于更新分组标签）
-async function loadGroups() {
-    try {
-        // 获取所有句子以提取分组
-        const response = await fetch('/api/sentences');
-        if (!response.ok) {
-            throw new Error('加载分组失败');
-        }
-        const allSentencesData = await response.json();
-        
-        // 提取所有唯一分组
-        const groups = new Set(['默认']); // 默认分组
-        allSentencesData.forEach(sentence => {
-            if (sentence.group) {
-                groups.add(sentence.group);
-            }
-        });
-        
-        // 更新分组标签
-        updateGroupTabs(groups);
-    } catch (error) {
-        console.error('加载分组失败:', error);
-    }
-}
 
-// 显示创建分组模态窗口
-function showCreateGroupModal() {
-    const modal = document.getElementById('create-group-modal');
-    const groupInput = document.getElementById('modal-group-name');
-    
-    if (modal && groupInput) {
-        modal.style.display = 'flex';
-        groupInput.focus();
-        
-        // 禁止背景滚动
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-// 隐藏创建分组模态窗口
-function hideCreateGroupModal() {
-    const modal = document.getElementById('create-group-modal');
-    const groupInput = document.getElementById('modal-group-name');
-    
-    if (modal && groupInput) {
-        modal.style.display = 'none';
-        // 清空输入内容
-        groupInput.value = '';
-        
-        // 恢复背景滚动
-        document.body.style.overflow = 'auto';
-    }
-}
-
-// 创建新分组
-function createGroup() {
-    const groupInput = document.getElementById('modal-group-name');
-    const confirmButton = document.getElementById('confirm-create-group');
-    
-    if (!groupInput || !confirmButton) {
-        console.log('找不到必要的DOM元素');
-        return;
-    }
-    
-    const groupName = groupInput.value.trim();
-    
-    if (!groupName) {
-        alert('请输入分组名称');
-        groupInput.focus();
-        return;
-    }
-    
-    // 立即隐藏模态窗口
-    hideCreateGroupModal();
-    
-    // 禁用按钮防止重复提交
-    confirmButton.disabled = true;
-    confirmButton.textContent = '创建中...';
-    
-    // 显示成功提示
-    showToast(`成功创建分组"${groupName}"`);
-    
-    // 异步发送请求创建分组
-    const testContent = `这是${groupName}分组的第一条内容`;
-    fetch('/api/sentences', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: testContent, group: groupName })
-    }).then(response => {
-        // 不检查响应状态，直接尝试处理
-        return response.text().then(text => {
-            try {
-                return text ? JSON.parse(text) : { id: null };
-            } catch (e) {
-                return { id: null };
-            }
-        });
-    }).then(result => {
-        // 异步更新UI
-        setTimeout(() => {
-            // 尝试加载分组和切换
-            try {
-                loadGroups();
-                switchGroup(groupName);
-                loadSentences();
-                
-                // 如果有ID，异步删除测试句子
-                if (result.id) {
-                    setTimeout(() => {
-                        fetch(`/api/sentences/${result.id}`, { method: 'DELETE' })
-                            .then(() => setTimeout(() => loadSentences(), 200))
-                            .catch(() => {});
-                    }, 100);
-                }
-            } catch (e) {
-                console.log('后续操作失败，但不影响用户体验');
-            }
-        }, 100);
-    }).catch(error => {
-        console.log('创建过程中出错，但功能可能已实现:', error);
-        // 不显示错误给用户
-    }).finally(() => {
-        // 恢复按钮状态
-        setTimeout(() => {
-            confirmButton.disabled = false;
-            confirmButton.textContent = '创建';
-        }, 500);
-    });
-}
-
-// 更新分组标签
-function updateGroupTabs(groups) {
-    // 清除现有标签（保留"全部"标签）
-    const allTab = groupTabs.querySelector('[data-group="全部"]');
-    groupTabs.innerHTML = '';
-    groupTabs.appendChild(allTab);
-    
-    // 添加所有分组标签
-    groups.forEach(group => {
-        if (group !== '全部') {
-            const tab = document.createElement('button');
-            tab.className = 'group-tab';
-            tab.setAttribute('data-group', group);
-            tab.textContent = group;
-            
-            // 如果是当前选中的分组，添加active类
-            if (group === currentGroup) {
-                tab.classList.add('active');
-            }
-            
-            // 绑定点击事件
-            tab.addEventListener('click', function() {
-                switchGroup(this.getAttribute('data-group'));
-            });
-            
-            // 绑定右键点击事件
-            tab.addEventListener('contextmenu', function(e) {
-                e.preventDefault(); // 阻止默认右键菜单
-                showGroupContextMenu(e, group);
-            });
-            
-            groupTabs.appendChild(tab);
-        }
-    });
-}
-
-// 显示分组右键菜单
-function showGroupContextMenu(event, group) {
-    try {
-        // 安全获取DOM元素
-        const contextMenu = document.getElementById('group-context-menu');
-        
-        // 健壮性检查
-        if (!contextMenu) {
-            console.error('找不到右键菜单DOM元素');
-            return;
-        }
-        
-        // 不允许操作默认分组
-        if (group === '默认' || group === '全部') {
-            return;
-        }
-        
-        // 设置当前右键点击的分组
-        currentRightClickedGroup = group;
-        
-        // 定位右键菜单，添加边界检查确保菜单不会超出视口
-        const menuWidth = contextMenu.offsetWidth || 200; // 默认宽度作为后备
-        const menuHeight = contextMenu.offsetHeight || 100; // 默认高度作为后备
-        
-        let leftPos = event.clientX;
-        let topPos = event.clientY;
-        
-        // 确保菜单位于可视区域内
-        if (leftPos + menuWidth > window.innerWidth) {
-            leftPos = window.innerWidth - menuWidth - 10;
-        }
-        if (topPos + menuHeight > window.innerHeight) {
-            topPos = window.innerHeight - menuHeight - 10;
-        }
-        
-        contextMenu.style.left = leftPos + 'px';
-        contextMenu.style.top = topPos + 'px';
-        contextMenu.style.display = 'block';
-    } catch (error) {
-        console.error('显示右键菜单失败:', error);
-    }
-}
-
-// 隐藏分组右键菜单
-function hideGroupContextMenu(keepGroupInfo = false) {
-    try {
-        const contextMenu = document.getElementById('group-context-menu');
-        if (contextMenu) {
-            contextMenu.style.display = 'none';
-        }
-        // 只有在不需要保留分组信息时才重置
-        if (!keepGroupInfo) {
-            currentRightClickedGroup = null;
-        }
-    } catch (error) {
-        console.error('隐藏右键菜单失败:', error);
-    }
-}
-
-// 显示重命名分组模态窗口
-function showRenameGroupModal() {
-    const modal = document.getElementById('rename-group-modal');
-    const groupInput = document.getElementById('modal-rename-group');
-    
-    if (modal && groupInput && currentRightClickedGroup) {
-        // 隐藏右键菜单但保留分组信息
-        hideGroupContextMenu(true);
-        
-        // 设置默认值为当前分组名
-        groupInput.value = currentRightClickedGroup;
-        
-        modal.style.display = 'flex';
-        groupInput.focus();
-        
-        // 禁止背景滚动
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-// 隐藏重命名分组模态窗口
-function hideRenameGroupModal() {
-    const modal = document.getElementById('rename-group-modal');
-    const groupInput = document.getElementById('modal-rename-group');
-    
-    if (modal && groupInput) {
-        modal.style.display = 'none';
-        // 清空输入内容
-        groupInput.value = '';
-        
-        // 恢复背景滚动
-        document.body.style.overflow = 'auto';
-    }
-    
-    // 无论模态窗口是否存在，都重置当前右键点击的分组
-    currentRightClickedGroup = null;
-}
-
-// 重命名分组
-async function renameGroup() {
-    try {
-        // 安全获取DOM元素
-        const groupInput = document.getElementById('modal-rename-group');
-        const confirmButton = document.getElementById('confirm-rename-group');
-        
-        // 健壮性检查
-        if (!groupInput || !confirmButton) {
-            console.error('找不到必要的模态窗口DOM元素');
-            showToast('操作失败：页面元素加载不完整', 'error');
-            return;
-        }
-        
-        // 保存当前要重命名的分组名，防止后续操作中被重置
-        const groupToRename = currentRightClickedGroup;
-        
-        if (!groupToRename) {
-            console.error('未找到当前右键点击的分组信息');
-            showToast('操作失败：请重新选择要修改的分组', 'error');
-            hideRenameGroupModal();
-            return;
-        }
-        
-        const newGroupName = groupInput.value.trim();
-        
-        if (!newGroupName) {
-            alert('请输入分组名称');
-            groupInput.focus();
-            return;
-        }
-        
-        // 禁用按钮防止重复提交
-        confirmButton.disabled = true;
-        confirmButton.textContent = '修改中...';
-        
-        // 获取所有句子
-        const response = await fetch('/api/sentences');
-        if (!response.ok) {
-            throw new Error('获取数据失败');
-        }
-        const allSentencesData = await response.json();
-        
-        // 找出需要修改分组的句子
-        const sentencesToUpdate = allSentencesData.filter(sentence => 
-            sentence.group === groupToRename
-        );
-        
-        // 立即隐藏模态窗口
-        hideRenameGroupModal();
-        
-        // 更新每个句子的分组
-        const updatePromises = sentencesToUpdate.map(sentence => 
-            fetch(`/api/sentences/${sentence.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    content: sentence.content, 
-                    group: newGroupName 
-                })
-            })
-        );
-        
-        await Promise.all(updatePromises);
-        
-        // 显示成功提示
-        showToast(`成功修改分组名"${groupToRename}"为"${newGroupName}"`);
-        
-        // 如果当前正在查看被修改的分组，切换到新分组
-        if (currentGroup === groupToRename) {
-            currentGroup = newGroupName;
-        }
-        
-        // 重新加载数据
-        await loadGroups();
-        loadSentences();
-    } catch (error) {
-        console.error('重命名分组失败:', error);
-        showToast('重命名分组失败，请重试', 'error');
-    } finally {
-        // 恢复按钮状态 - 使用安全的方式
-        const confirmButton = document.getElementById('confirm-rename-group');
-        if (confirmButton) {
-            setTimeout(() => {
-                confirmButton.disabled = false;
-                confirmButton.textContent = '确认';
-            }, 500);
-        }
-    }
-}
-
-// 显示删除分组模态窗口
-function showDeleteGroupModal() {
-    const modal = document.getElementById('delete-group-modal');
-    const groupNameElement = document.getElementById('delete-group-name');
-    
-    if (modal && groupNameElement && currentRightClickedGroup) {
-        // 隐藏右键菜单但保留分组信息
-        hideGroupContextMenu(true);
-        
-        // 设置要删除的分组名
-        groupNameElement.textContent = currentRightClickedGroup;
-        
-        modal.style.display = 'flex';
-        
-        // 禁止背景滚动
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-// 隐藏删除分组模态窗口
-function hideDeleteGroupModal() {
-    const modal = document.getElementById('delete-group-modal');
-    
-    if (modal) {
-        modal.style.display = 'none';
-        
-        // 恢复背景滚动
-        document.body.style.overflow = 'auto';
-    }
-    
-    // 无论模态窗口是否存在，都重置当前右键点击的分组
-    currentRightClickedGroup = null;
-}
-
-// 删除分组
-async function deleteGroup() {
-    try {
-        // 安全获取DOM元素
-        const confirmButton = document.getElementById('confirm-delete-group');
-        
-        // 健壮性检查
-        if (!confirmButton) {
-            console.error('找不到必要的模态窗口DOM元素');
-            showToast('操作失败：页面元素加载不完整', 'error');
-            return;
-        }
-        
-        if (!currentRightClickedGroup) {
-            console.error('未找到当前右键点击的分组信息');
-            showToast('操作失败：请重新选择要删除的分组', 'error');
-            hideDeleteGroupModal();
-            return;
-        }
-        
-        // 保存当前要删除的分组名，防止后续操作中被重置
-        const groupToDelete = currentRightClickedGroup;
-        
-        // 禁用按钮防止重复提交
-        confirmButton.disabled = true;
-        confirmButton.textContent = '删除中...';
-        
-        // 获取所有句子
-        const response = await fetch('/api/sentences');
-        if (!response.ok) {
-            throw new Error('获取数据失败');
-        }
-        const allSentencesData = await response.json();
-        
-        // 找出需要删除的句子（属于当前分组的句子）
-        const sentencesToDelete = allSentencesData.filter(sentence => 
-            sentence.group === groupToDelete
-        );
-        
-        // 立即隐藏模态窗口
-        hideDeleteGroupModal();
-        
-        // 执行删除操作，对每个句子发送DELETE请求
-        const deletePromises = sentencesToDelete.map(sentence => 
-            fetch(`/api/sentences/${sentence.id}`, {
-                method: 'DELETE'
-            })
-        );
-        
-        await Promise.all(deletePromises);
-        
-        // 显示成功提示
-        showToast(`成功删除分组"${groupToDelete}"及其下的${sentencesToDelete.length}个句子`);
-        
-        // 如果当前正在查看被删除的分组，切换到默认分组
-        if (currentGroup === groupToDelete) {
-            currentGroup = '默认';
-        }
-        
-        // 重新加载数据
-        await loadGroups();
-        loadSentences();
-    } catch (error) {
-        console.error('删除分组失败:', error);
-        showToast('删除分组失败，请重试', 'error');
-    } finally {
-        // 恢复按钮状态 - 使用安全的方式
-        const confirmButton = document.getElementById('confirm-delete-group');
-        if (confirmButton) {
-            setTimeout(() => {
-                confirmButton.disabled = false;
-                confirmButton.textContent = '删除';
-            }, 500);
-        }
-    }
-}
-
-// 切换分组
-function switchGroup(group) {
-    currentGroup = group;
-    
-    // 更新标签状态
-    document.querySelectorAll('.group-tab').forEach(tab => {
-        if (tab.getAttribute('data-group') === group) {
-            tab.classList.add('active');
-        } else {
-            tab.classList.remove('active');
-        }
-    });
-    
-    // 更新显示的当前分组
-    const displayGroupEl = document.getElementById('display-current-group');
-    if (displayGroupEl) {
-        displayGroupEl.textContent = group;
-    }
-    
-    // 重新加载句子
-    loadSentences();
-}
 
 // 渲染句子列表
 function renderSentences() {
-    // 按复制次数排序
-    let filteredSentences = [...allSentences];
-    filteredSentences.sort((a, b) => b.copy_count - a.copy_count);
-    
-    if (filteredSentences.length === 0) {
+    if (allSentences.length === 0) {
         sentenceList.innerHTML = `
             <div class="empty-state">
                 <h3>暂无数据</h3>
@@ -614,13 +103,12 @@ function renderSentences() {
         sentenceList.removeChild(sentenceList.firstChild);
     }
     
-    // 添加带有复制次数的新卡片
-    filteredSentences.forEach(sentence => {
+    // 添加句子卡片
+    allSentences.forEach(sentence => {
         const card = document.createElement('div');
         card.className = 'sentence-card';
         card.setAttribute('data-id', sentence.id);
         card.innerHTML = `
-            <div class="copy-count">${sentence.copy_count}</div>
             <div class="sentence-content">${escapeHtml(sentence.content)}</div>
             <div class="sentence-actions">
                 <button class="action-btn delete-btn" data-id="${sentence.id}">删除</button>
@@ -661,8 +149,7 @@ function bindCardEvents() {
                 // 首选使用现代API
                 navigator.clipboard.writeText(sentence.content)
                     .then(() => {
-                        // 更新计数和显示成功提示
-                        updateCopyCount();
+                        // 不再需要更新计数，直接显示成功提示
                         showToast('复制成功！');
                     })
                     .catch(() => {
@@ -717,63 +204,16 @@ function bindCardEvents() {
                 // 移除临时元素
                 document.body.removeChild(tempDiv);
                 
-                // 更新计数和显示提示
-                updateCopyCount();
+                // 不再需要更新计数，直接显示提示
                 showToast(success ? '复制成功！' : '复制失败，请手动复制', success ? '' : 'error');
             }
             
-            // 抽取更新计数的逻辑为单独函数
+            // 不再需要更新复制计数，因为我们已经移除了相关显示功能
             function updateCopyCount() {
-                // 更新计数完全异步化
-                setTimeout(() => {
-                    fetch(`/api/sentences/${id}/copy`, { 
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    }).then(() => {
-                        // 更新内存中的数据
-                        const sentenceIndex = allSentences.findIndex(s => s.id === parseInt(id));
-                        if (sentenceIndex !== -1) {
-                            allSentences[sentenceIndex].copy_count += 1;
-                            
-                            // 最小化DOM更新
-                            requestAnimationFrame(() => {
-                                const copyCountEl = cardElement.querySelector('.copy-count');
-                                if (copyCountEl) {
-                                    copyCountEl.textContent = allSentences[sentenceIndex].copy_count.toString();
-                                }
-                            });
-                        }
-                    }).catch(err => console.error('更新计数失败:', err));
-                }, 50);
+                // 空函数，保留调用接口的兼容性
             }
             
-            // 更新计数完全异步化，使用防抖
-            setTimeout(() => {
-                fetch(`/api/sentences/${id}/copy`, { 
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                }).then(() => {
-                    // 更新内存中的数据
-                    const sentenceIndex = allSentences.findIndex(s => s.id === parseInt(id));
-                    if (sentenceIndex !== -1) {
-                        allSentences[sentenceIndex].copy_count += 1;
-                        
-                        // 最小化DOM更新
-                        requestAnimationFrame(() => {
-                            const copyCountEl = cardElement.querySelector('.copy-count');
-                            if (copyCountEl) {
-                                // 预先计算内容，减少重排
-                                const newCount = allSentences[sentenceIndex].copy_count.toString();
-                                copyCountEl.textContent = newCount;
-                            }
-                        });
-                    }
-                }).catch(err => console.error('更新计数失败:', err));
-            }, 50);
+            // 移除不必要的复制计数更新请求
             
             // 恢复toast提示，但使用优化的方式
             showToast('复制成功！');
@@ -808,224 +248,78 @@ function bindCardEvents() {
 
 // 绑定事件 - 简化版本，确保添加句子功能正常工作
 function bindEvents() {
-    // 点击页面其他地方关闭右键菜单
-    document.addEventListener('click', function() {
-        hideGroupContextMenu();
-    });
-    
-    // 为右键菜单选项绑定事件
-    const contextMenu = document.getElementById('group-context-menu');
-    if (contextMenu) {
-        // 阻止右键菜单内部点击关闭菜单
-        contextMenu.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-        
-        // 重命名选项
-        contextMenu.querySelector('.context-menu-item[data-action="rename"]').addEventListener('click', function() {
-            showRenameGroupModal();
-        });
-        
-        // 删除选项
-        contextMenu.querySelector('.context-menu-item[data-action="delete"]').addEventListener('click', function() {
-            showDeleteGroupModal();
+    // 检查并绑定添加按钮的点击事件
+    const btn = document.getElementById('add-btn');
+    if (btn) {
+        btn.addEventListener('click', function() {
+            addSentence();
         });
     }
     
-    // 绑定取消重命名分组按钮事件
-    const cancelRenameBtn = document.getElementById('cancel-rename-group');
-    if (cancelRenameBtn) {
-        cancelRenameBtn.addEventListener('click', function() {
-            hideRenameGroupModal();
-        });
-    }
-    
-    // 绑定确认重命名分组按钮事件
-    const confirmRenameBtn = document.getElementById('confirm-rename-group');
-    if (confirmRenameBtn) {
-        confirmRenameBtn.addEventListener('click', function() {
-            renameGroup();
-        });
-    }
-    
-    // 为模态窗口中的重命名输入框添加回车事件
-    const renameInput = document.getElementById('modal-rename-group');
-    if (renameInput) {
-        renameInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                renameGroup();
+    // 检查并绑定输入框的回车事件
+    const input = document.getElementById('new-content');
+    if (input) {
+        input.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                addSentence();
             }
         });
     }
     
-    // 为重命名模态窗口添加点击外部关闭功能
-    const renameModal = document.getElementById('rename-group-modal');
-    if (renameModal) {
-        renameModal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                hideRenameGroupModal();
-            }
-        });
-    }
-    
-    // 绑定取消删除分组按钮事件
-    const cancelDeleteBtn = document.getElementById('cancel-delete-group');
-    if (cancelDeleteBtn) {
-        cancelDeleteBtn.addEventListener('click', function() {
-            hideDeleteGroupModal();
-        });
-    }
-    
-    // 绑定确认删除分组按钮事件
-    const confirmDeleteBtn = document.getElementById('confirm-delete-group');
-    if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener('click', function() {
-            deleteGroup();
-        });
-    }
-    
-    // 为删除模态窗口添加点击外部关闭功能
-    const deleteModal = document.getElementById('delete-group-modal');
-    if (deleteModal) {
-        deleteModal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                hideDeleteGroupModal();
-            }
-        });
-    }
-    
-    // 添加ESC键关闭所有模态窗口
+    // 添加全局ESC键监听
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            hideGroupContextMenu();
-            
-            const renameModal = document.getElementById('rename-group-modal');
-            if (renameModal && renameModal.style.display === 'flex') {
-                hideRenameGroupModal();
-            }
-            
-            const deleteModal = document.getElementById('delete-group-modal');
-            if (deleteModal && deleteModal.style.display === 'flex') {
-                hideDeleteGroupModal();
-            }
-            
-            const createModal = document.getElementById('create-group-modal');
-            if (createModal && createModal.style.display === 'flex') {
-                hideCreateGroupModal();
-            }
+            // ESC键可以用于未来的模态窗口或弹窗
         }
     });
-    // 直接获取并绑定添加按钮的点击事件
-    document.getElementById('add-btn').addEventListener('click', function() {
-        console.log('添加按钮被点击');
-        addSentence();
-    });
-    
-    // 直接获取并绑定输入框的回车事件
-    document.getElementById('new-content').addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            console.log('快捷键触发添加句子');
-            addSentence();
-        }
-    });
-    
-    // 绑定显示创建分组模态窗口按钮事件
-    document.getElementById('show-create-group-btn').addEventListener('click', function() {
-        console.log('显示创建分组模态窗口按钮被点击');
-        showCreateGroupModal();
-    });
-    
-    // 绑定取消创建分组按钮事件
-    document.getElementById('cancel-create-group').addEventListener('click', function() {
-        console.log('取消创建分组');
-        hideCreateGroupModal();
-    });
-    
-    // 绑定确认创建分组按钮事件
-    document.getElementById('confirm-create-group').addEventListener('click', function() {
-        console.log('确认创建分组');
-        createGroup();
-    });
-    
-    // 为模态窗口中的分组输入框添加回车事件
-    document.getElementById('modal-group-name').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            console.log('回车触发创建分组');
-            createGroup();
-        }
-    });
-    
-    // 为模态窗口添加点击外部关闭功能
-    document.getElementById('create-group-modal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            hideCreateGroupModal();
-        }
-    });
-    
-    // 原有模态窗口相关事件已移至上方统一处理
 }
 
-// 添加句子 - 使用当前选中的分组
 async function addSentence() {
-    // 直接获取DOM元素
-    const contentInput = document.getElementById('new-content');
-    const addButton = document.getElementById('add-btn');
-    
-    // 验证元素存在
-    if (!contentInput || !addButton) {
-        console.error('找不到必要的DOM元素');
-        alert('页面加载失败，请刷新后重试');
-        return;
-    }
-    
-    // 获取输入值和当前分组
-    const content = contentInput.value.trim();
-    // 如果当前分组是"全部"，则使用默认分组"默认"
-    let group = currentGroup === '全部' ? '默认' : currentGroup;
-    
-    // 验证内容不为空
-    if (!content) {
-        alert('请输入要保存的句子内容');
-        contentInput.focus();
+    // 验证输入
+    if (!newContent.value.trim()) {
+        showToast('请输入内容', 'error');
         return;
     }
     
     // 禁用按钮防止重复提交
-    addButton.disabled = true;
-    addButton.textContent = '添加中...';
+    addBtn.disabled = true;
+    addBtn.textContent = '添加中...';
     
     try {
-        // 发送请求到后端
+        // 准备数据
+        const data = {
+            content: newContent.value.trim()
+        };
+        
+        // 发送POST请求
         const response = await fetch('/api/sentences', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ content: content, group: group })
+            body: JSON.stringify(data)
         });
         
-        // 检查响应状态
         if (!response.ok) {
-            throw new Error('添加失败，服务器返回错误');
+            throw new Error('添加失败');
         }
         
         // 清空输入框
-        contentInput.value = '';
-        contentInput.focus();
+        newContent.value = '';
+        
+        // 刷新句子列表
+        await loadSentences();
         
         // 显示成功提示
-        showToast(`成功添加到分组"${group}"`);
+        showToast('添加成功');
         
-        // 重新加载数据
-        await loadGroups();
-        loadSentences();
     } catch (error) {
         console.error('添加句子失败:', error);
-        alert('添加失败: ' + error.message);
+        showToast('添加失败，请重试', 'error');
     } finally {
         // 恢复按钮状态
-        addButton.disabled = false;
-        addButton.textContent = '添加句子';
+        addBtn.disabled = false;
+        addBtn.textContent = '添加话术';
     }
 }
 
@@ -1042,8 +336,7 @@ async function deleteSentence(id) {
         
         showToast('删除成功！');
         
-        // 重新加载分组和句子
-        await loadGroups();
+        // 重新加载句子
         loadSentences();
     } catch (error) {
         showToast('删除失败，请重试', 'error');
