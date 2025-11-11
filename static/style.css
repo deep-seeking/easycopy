@@ -110,7 +110,7 @@ h1 {
 }
 
 .add-section {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.5);
     padding: 30px;
     border-radius: 10px;
     margin-bottom: 30px;
@@ -176,7 +176,7 @@ button:active {
 }
 
 .sentences-container {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.5);
     padding: 4px;
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -368,7 +368,7 @@ button:active {
     position: relative;
     padding: 8px;
     margin-bottom: 5px; /* 减小卡片间距 */
-    background-color: rgba(255, 255, 255, 0.85);
+    background-color: rgba(255, 255, 255, 0.6);
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     -webkit-tap-highlight-color: transparent;
@@ -579,9 +579,13 @@ button:active {
         font-size: 0.75rem; /* 进一步减小副标题大小 */
     }
     
+    /* 在移动端隐藏添加话术组件 */
+    h2 {
+        display: none;
+    }
+    
     .add-section {
-        padding: 15px; /* 减小添加区域内边距 */
-        margin-bottom: 15px; /* 减小底部间距 */
+        display: none; /* 隐藏添加话术容器 */
     }
     
     .sentences-container {
