@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EasyCopy - 快速粘贴工具</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
 </head>
 <body>
     <div class="container">
@@ -12,7 +13,16 @@
             <h1>EasyCopy</h1>
             <p class="subtitle">快速管理和复制常用文本</p>
         </header>
-        <h3>话术列表</h3>
+        <h3 style="display: flex; justify-content: space-between; align-items: center;">
+            话术列表
+            <div class="sound-toggle-container">
+                <span class="toggle-label">功德音效</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="sound-toggle" />
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </h3>
         <div class="sentences-container">
             <div class="sentence-list" id="sentence-list">
                 <div class="empty-state">

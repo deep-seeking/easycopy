@@ -392,6 +392,23 @@ function showToast(message, type = 'success') {
     }, 1500);
 }
 
+// 播放木鱼音效
+function playWoodenFishSound() {
+    // 为了避免在音效文件不存在时影响功能，我们使用条件播放
+    // 由于无法在客户端直接检查文件是否存在，我们尝试播放并优雅处理错误
+    try {
+        // 创建音频对象
+        const audio = new Audio('/static/sounds/wooden_fish.mp3');
+        audio.volume = 0.5; // 设置音量为50%
+        audio.play().catch(err => {
+            // 静默处理播放错误，确保动画不受影响
+            // 这些错误可能是由于浏览器自动播放限制或文件不存在
+        });
+    } catch (error) {
+        // 静默处理错误，确保其他功能正常运行
+    }
+}
+
 // 显示功德+1动画
 function showMeritAnimation(element) {
     // 创建功德+1元素
@@ -413,6 +430,12 @@ function showMeritAnimation(element) {
     
     // 添加到页面，CSS动画会自动触发
     document.body.appendChild(meritElement);
+    
+    // 播放木鱼音效（根据开关状态）
+    const soundToggle = document.getElementById('sound-toggle');
+    if (soundToggle && soundToggle.checked) {
+        playWoodenFishSound();
+    }
     
     // 动画结束后移除元素
     setTimeout(() => {
